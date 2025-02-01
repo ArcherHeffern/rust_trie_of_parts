@@ -94,8 +94,8 @@ mod tests {
     #[test]
     fn test_all() {
         let mut trie: Trie<String, PathBuf> = Trie::new();
-        let src_path1 = Path::new("/etc/bin/echo");
-        let src_path2 = Path::new("/etc/bin/echos");
+        let src_path1 = Path::new("/etc/bin/echos");
+        let src_path2 = Path::new("/etc/bin/echo");
         let src_path3 = Path::new("/etc/bin/echo/hello.txt");
 
         let dest_path1 = PathBuf::from("usr/cat");

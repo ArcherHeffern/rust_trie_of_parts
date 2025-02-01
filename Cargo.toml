@@ -1,6 +1,8 @@
 [package]
 name = "rust_trie"
+description = "Trie library for storing and searching lists of arbitrary data structures efficiently that have substantial overlap. For example file paths"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
 
 [dependencies]

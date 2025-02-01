@@ -1,6 +1,8 @@
-# Trie focusing on sections of arbitrary data structures instead of raw strings
+# Description
+Trie focusing on sections of arbitrary data structures instead of raw strings
 Personal usecase was quickly searching for valid paths 
 
+Published on [crates.io](https://crates.io/crates/trie_of_lists)
 ```rust
 let mut trie: Trie<String, bool> = Trie::new();
 let path_1 = Path::new("/etc/bin/echos");

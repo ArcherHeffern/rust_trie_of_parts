@@ -48,31 +48,36 @@ where
     }
 
     /// ### About
-    /// Finds the value of the longest entry with prefix key
+    /// Finds the key and value of the longest entry with prefix key
     ///
     /// ### Example
-    /// Assume trie contains the following keys and values of the form (key) -> value
+    /// Assume trie contains the following keys and values of the form (key) -> (matching_key, matching_value)
     /// - (four, score, and) -> seven
     /// - (four, score, and, seven) -> years
     ///
-    /// The query `best_match ["four", "score", "and", "seven", "years", "ago"]` will return `years`
-    pub fn best_match<I>(&self, key: I) -> Option<V>
+    /// The query `best_match (four, score, and, seven, years, ago)` will return ((four, score, and, seven), `years`)
+    pub fn best_match<I>(&self, key: I) -> Option<(Vec<K>, V)>
     where
         I: IntoIterator<Item = K>,
     {
         let mut cur: &TrieNode<K, V> = &self.root;
-        let mut cur_match = None;
+        let mut cur_key = Vec::new();
+        let mut cur_value = None;
         for part in key {
             if let Some(v) = cur.children.get(&part) {
+                cur_key.push(part);
                 cur = v;
                 if let Some(new_match) = cur.value.as_ref() {
-                    cur_match.replace(new_match.clone());
+                    cur_value.replace(new_match.clone());
                 }
             } else {
                 break;
             }
         }
-        cur_match
+        match cur_value {
+            Some(value) => Some((cur_key, value)),
+            None => None,
+        }
     }
 
     /// Inserts key and value into Trie, overriding any previous value
@@ -109,7 +114,7 @@ mod tests {
 
     use super::*;
 
-    fn path_to_key_iter(path: &Path) -> Vec<String> {
+    fn path_to_vec(path: &Path) -> Vec<String> {
         path.components()
             .map(|c| c.as_os_str().to_string_lossy().into_owned())
             .collect()
@@ -126,27 +131,21 @@ mod tests {
         let dest_path2 = PathBuf::from("usr/tar");
 
         let longer_path1 = Path::new("/etc/bin/echo/hello.txt/jello");
-        trie.insert(path_to_key_iter(src_path1), dest_path1.clone());
-        trie.insert(path_to_key_iter(src_path3), dest_path2.clone());
+        trie.insert(path_to_vec(src_path1), dest_path1.clone());
+        trie.insert(path_to_vec(src_path3), dest_path2.clone());
 
-        assert!(trie.contains(path_to_key_iter(src_path1)));
-        assert!(trie.contains(path_to_key_iter(src_path3)));
+        assert!(trie.contains(path_to_vec(src_path1)));
+        assert!(trie.contains(path_to_vec(src_path3)));
+        assert_eq!(trie.get(path_to_vec(src_path1)), Some(dest_path1.clone()));
+        assert_eq!(trie.get(path_to_vec(src_path3)), Some(dest_path2.clone()));
         assert_eq!(
-            trie.get(path_to_key_iter(src_path1)),
-            Some(dest_path1.clone())
+            trie.best_match(path_to_vec(src_path1)),
+            Some((path_to_vec(src_path1), dest_path1.clone()))
         );
         assert_eq!(
-            trie.get(path_to_key_iter(src_path3)),
-            Some(dest_path2.clone())
+            trie.best_match(path_to_vec(longer_path1)),
+            Some((path_to_vec(src_path3), dest_path2.clone()))
         );
-        assert_eq!(
-            trie.best_match(path_to_key_iter(src_path1)),
-            Some(dest_path1.clone())
-        );
-        assert_eq!(
-            trie.best_match(path_to_key_iter(longer_path1)),
-            Some(dest_path2.clone())
-        );
-        assert!(!trie.contains(path_to_key_iter(src_path2)));
+        assert!(!trie.contains(path_to_vec(src_path2)));
     }
 }

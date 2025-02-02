@@ -1,55 +1,64 @@
-use std::{collections::HashMap, hash::Hash}; 
+use std::{collections::HashMap, hash::Hash};
 
-
-struct TrieNode<K, V> 
-where K: Hash + Eq + From<String>, V: Hash + Eq + Clone
+#[derive(Debug, Default)]
+struct TrieNode<K, V>
+where
+    K: Hash + Eq + Default,
+    V: Hash + Eq + Clone + Default,
 {
     children: HashMap<K, TrieNode<K, V>>,
     value: Option<V>,
 }
 
-impl <K, V>TrieNode<K, V> 
-where K: Hash + Eq + From<String>, V: Hash + Eq + Clone
+pub struct Trie<K, V>
+where
+    K: Hash + Eq + Default,
+    V: Hash + Eq + Clone + Default,
 {
-    pub fn create_default() -> Self {
-        TrieNode {children: HashMap::new(), value: None}
-    }
-}
-pub struct Trie<K, V> 
-where K: Hash + Eq + From<String>, V: Hash + Eq + Clone
-{
-    root: TrieNode<K, V>
+    root: TrieNode<K, V>,
 }
 
-impl <K, V>Trie<K, V> 
-where K: Hash + Eq + From<String>, V: Hash + Eq + Clone
+impl<K, V> Trie<K, V>
+where
+    K: Hash + Eq + Default,
+    V: Hash + Eq + Clone + Default,
 {
+    /// Create empty Trie
     pub fn new() -> Self {
-        Trie { root: TrieNode::create_default() }
-    }
-
-    pub fn get<I>(&self, key: I) -> Option<V> 
-    where I: IntoIterator<Item = K>
-    {
-        let mut cur: &TrieNode<K, V> = &self.root;
-        let key = key.into_iter();
-        for part in key {
-            match cur.children.get(&part) {
-                Some(v) => cur = v,
-                None => return None
-            }
+        Trie {
+            root: TrieNode::default(),
         }
-        cur.value.clone()
     }
 
-    pub fn contains<I>(&self, key: I) -> bool 
-    where I: IntoIterator<Item = K>
+    /// Get a copy of the value associated with the key in O(len(key)) time
+    pub fn get<I>(&self, key: I) -> Option<V>
+    where
+        I: IntoIterator<Item = K>,
     {
-        self.get(key).is_some()
+        self.traverse(key).and_then(|node| node.value.clone())
     }
 
-    pub fn best_match<I>(&self, key: I) -> Option<V> 
-    where I: IntoIterator<Item = K>
+    /// Check if Trie contains the key in O(len(key)) time
+    pub fn contains<I>(&self, key: I) -> bool
+    where
+        I: IntoIterator<Item = K>,
+    {
+        self.traverse(key)
+            .map_or(false, |node| node.value.is_some())
+    }
+
+    /// ### About
+    /// Finds the value of the longest entry with prefix key
+    ///
+    /// ### Example
+    /// Assume trie contains the following keys and values of the form (key) -> value
+    /// - (four, score, and) -> seven
+    /// - (four, score, and, seven) -> years
+    ///
+    /// The query `best_match ["four", "score", "and", "seven", "years", "ago"]` will return `years`
+    pub fn best_match<I>(&self, key: I) -> Option<V>
+    where
+        I: IntoIterator<Item = K>,
     {
         let mut cur: &TrieNode<K, V> = &self.root;
         let mut cur_match = None;
@@ -62,19 +71,35 @@ where K: Hash + Eq + From<String>, V: Hash + Eq + Clone
             } else {
                 break;
             }
-
         }
         cur_match
     }
 
-    pub fn insert<I>(&mut self, key: I, value: V) 
-    where I: IntoIterator<Item = K>
+    /// Inserts key and value into Trie, overriding any previous value
+    pub fn insert<I>(&mut self, key: I, value: V)
+    where
+        I: IntoIterator<Item = K>,
     {
         let mut cur = &mut self.root;
         for part in key {
-            cur = cur.children.entry(part).or_insert(TrieNode::create_default());
+            cur = cur.children.entry(part).or_insert(TrieNode::default());
         }
         cur.value = Some(value);
+    }
+
+    /// Helper function to traverse the Trie
+    fn traverse<I>(&self, key: I) -> Option<&TrieNode<K, V>>
+    where
+        I: IntoIterator<Item = K>,
+    {
+        let mut cur: &TrieNode<K, V> = &self.root;
+        for part in key {
+            match cur.children.get(&part) {
+                Some(v) => cur = v,
+                None => return None,
+            }
+        }
+        Some(cur)
     }
 }
 
@@ -85,11 +110,10 @@ mod tests {
     use super::*;
 
     fn path_to_key_iter(path: &Path) -> Vec<String> {
-    path.components()
-        .map(|c| c.as_os_str().to_string_lossy().into_owned())
-        .collect()
+        path.components()
+            .map(|c| c.as_os_str().to_string_lossy().into_owned())
+            .collect()
     }
-
 
     #[test]
     fn test_all() {
@@ -107,10 +131,22 @@ mod tests {
 
         assert!(trie.contains(path_to_key_iter(src_path1)));
         assert!(trie.contains(path_to_key_iter(src_path3)));
-        assert_eq!(trie.get(path_to_key_iter(src_path1)), Some(dest_path1.clone()));
-        assert_eq!(trie.get(path_to_key_iter(src_path3)), Some(dest_path2.clone()));
-        assert_eq!(trie.best_match(path_to_key_iter(src_path1)), Some(dest_path1.clone()));
-        assert_eq!(trie.best_match(path_to_key_iter(longer_path1)), Some(dest_path2.clone()));
+        assert_eq!(
+            trie.get(path_to_key_iter(src_path1)),
+            Some(dest_path1.clone())
+        );
+        assert_eq!(
+            trie.get(path_to_key_iter(src_path3)),
+            Some(dest_path2.clone())
+        );
+        assert_eq!(
+            trie.best_match(path_to_key_iter(src_path1)),
+            Some(dest_path1.clone())
+        );
+        assert_eq!(
+            trie.best_match(path_to_key_iter(longer_path1)),
+            Some(dest_path2.clone())
+        );
         assert!(!trie.contains(path_to_key_iter(src_path2)));
     }
 }
